@@ -16,7 +16,6 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import KFold, StratifiedKFold
 import csv
 import pandas as pd
-from matplotlib import pyplot as plt
 from numpy.lib import stride_tricks
 import torch
 from torch.utils.data import Dataset, DataLoader
