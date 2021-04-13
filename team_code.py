@@ -6,21 +6,18 @@ from helper_code import *
 import numpy as np, os, sys, joblib
 from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
-from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from scipy import ndimage
+from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.layers.experimental import preprocessing
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
-from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import KFold, StratifiedKFold
 import csv
 import pandas as pd
 from numpy.lib import stride_tricks
-import torch
-from torch.utils.data import Dataset, DataLoader
-import torchvision
-from torchvision.transforms import transforms
+#import torch
+#from torch.utils.data import Dataset, DataLoader
+#import torchvision
+#from torchvision.transforms import transforms
 import tensorflow as tf
 import cv2
 
@@ -63,85 +60,66 @@ def training_code(data_directory, model_directory):
     data = np.zeros((num_recordings, 14), dtype=np.float32) # 14 features: one feature for each lead, one feature for age, and one feature for sex
     labels = np.zeros((num_recordings, num_classes), dtype=np.bool) # One-hot encoding of classes
 
-    os.remove("/content/drive/MyDrive/python-classifier-2021/myfile.csv")
+    os.remove("myfile.csv")
 
-    data_map = {}
-    for i in range(10):#range(num_recordings):#range(num_recordings):
+    for i in range(num_recordings):
         print('    {}/{}...'.format(i+1, num_recordings))
 
         # Load header and recording.
         header = load_header(header_files[i])
         recording = load_recording(recording_files[i])
-        age, sex, rms = get_features(header, recording, twelve_leads)
-        data[i, 0:12] = rms        
+        #age, sex, rms = get_features(header, recording, twelve_leads)
+        #data[i, 0:12] = rms        
 
         current_labels = get_labels(header)
         for label in current_labels:
             if label in classes:
-                  train_data = get_signal_spectrum(header, recording, twelve_leads, data_directory,label,i)     
+                  train_data = get_signal_spectrum(header, recording, twelve_leads, label,i)     
                   j = classes.index(label)  
             #labels[i, j] = 1
 
     #Train 12-lead ECG model.
     print('Training 12-lead ECG model...')
-
     leads = twelve_leads
     filename = os.path.join(model_directory, 'twelve_lead_ecg_model.sav')
     col_Names=["filepath", "label"]
-    train_data = pd.read_csv('/content/drive/MyDrive/python-classifier-2021/myfile.csv',names=col_Names)
+    train_data = pd.read_csv('myfile.csv',names=col_Names)
     #channel112 = (ch1, ch2, ch3,ch4,ch5,ch6,ch7, ch8, ch9,ch10,ch11,ch12)
     train_data_chl12 = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_3|chl_4|chl_5|chl_6|chl_7|chl_8|chl_9|chl_10|chl_11|chl_12')] 
-    classes, leads, classifier = our_clsf_model(data_directory,train_data_chl12,leads)
-    feature_indices = [twelve_leads.index(lead) for lead in leads]
-    features = data[:, feature_indices]
-    imputer=SimpleImputer().fit(features)
+    classes, leads, imputer, classifier = our_clsf_model(data_directory,train_data_chl12,leads)
     save_model(filename, classes, leads, imputer, classifier)
 
     # Train 6-lead ECG model.
     print('Training 6-lead ECG model...')
-
     leads = six_leads
     filename = os.path.join(model_directory, 'six_lead_ecg_model.sav')
     col_Names=["filepath", "label"]
-    train_data = pd.read_csv('/content/drive/MyDrive/python-classifier-2021/myfile.csv',names=col_Names)
+    train_data = pd.read_csv('myfile.csv',names=col_Names)
     #channel6 = (ch1, ch2, ch3,ch4,ch5,ch6)
     train_data_chl6 = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_3|chl_4|chl_5|chl_6')] 
-    classes, leads, classifier = our_clsf_model(data_directory,train_data_chl6,leads)
-    feature_indices = [twelve_leads.index(lead) for lead in leads]
-    features = data[:, feature_indices]
-    imputer=SimpleImputer().fit(features)
+    classes, leads, imputer, classifier = our_clsf_model(data_directory,train_data_chl6,leads)
     save_model(filename, classes, leads, imputer, classifier)
 
     # Train 3-lead ECG model.
     print('Training 3-lead ECG model...')
-
     leads = three_leads
     filename = os.path.join(model_directory, 'three_lead_ecg_model.sav')
     col_Names=["filepath", "label"]
-    train_data = pd.read_csv('/content/drive/MyDrive/python-classifier-2021/myfile.csv',names=col_Names)
+    train_data = pd.read_csv('myfile.csv',names=col_Names)
     #channel3 = (ch1, ch2, ch8)
     train_data_chl3 = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_8')]
-    classes, leads, classifier = our_clsf_model(data_directory,train_data_chl3,leads)
-
-    feature_indices = [twelve_leads.index(lead) for lead in leads]
-    features = data[:, feature_indices]
-    imputer=SimpleImputer().fit(features)
+    classes, leads, imputer, classifier = our_clsf_model(data_directory,train_data_chl3,leads)
     save_model(filename, classes, leads, imputer, classifier)
 
     # Train 2-lead ECG model.
     print('Training 2-lead ECG model...')
-
     leads = two_leads
     filename = os.path.join(model_directory, 'two_lead_ecg_model.sav')
-
     col_Names=["filepath", "label"]
-    train_data = pd.read_csv('/content/drive/MyDrive/python-classifier-2021/myfile.csv',names=col_Names)
+    train_data = pd.read_csv('myfile.csv',names=col_Names)
     #channel2 = (ch1, ch11)
     train_data_chl2 = train_data[train_data['filepath'].str.contains('chl_1|chl_11')]
-    classes, leads, classifier = our_clsf_model(data_directory,train_data_chl2,leads)
-    feature_indices = [twelve_leads.index(lead) for lead in leads]
-    features = data[:, feature_indices]
-    imputer=SimpleImputer().fit(features)
+    classes, leads, imputer, classifier = our_clsf_model(data_directory,train_data_chl2,leads)
     save_model(filename, classes, leads, imputer, classifier)
 
 ################################################################################
@@ -199,24 +177,51 @@ def run_model(model, header, recording):
     leads = model['leads']
     imputer = model['imputer']
     classifier = model['classifier']
-
+    
+    os.remove("myfile.csv")
     # Load features.
     num_leads = len(leads)
-    data = np.zeros(num_leads+2, dtype=np.float32)
-    age, sex, rms = get_features(header, recording, leads)
-    data[0:num_leads] = rms
-    data[num_leads] = age
-    data[num_leads+1] = sex
+    current_labels = get_labels(header)
+    for label in current_labels:
+        if label in classes:
+            train_data = get_signal_spectrum(header, recording, leads, label, 1)       
+    #labels[i, j] = 1
+    
+    col_Names=["filepath", "label"]
+    train_data = pd.read_csv('myfile.csv',names=col_Names)
+    
+    if num_leads == 12:
+        #channel112 = (ch1, ch2, ch3,ch4,ch5,ch6,ch7, ch8, ch9,ch10,ch11,ch12)
+        train_data_chl = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_3|chl_4|chl_5|chl_6|chl_7|chl_8|chl_9|chl_10|chl_11|chl_12')] 
+    elif num_leads == 6:
+        #channel6 = (ch1, ch2, ch3,ch4,ch5,ch6)
+        train_data_chl = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_3|chl_4|chl_5|chl_6')] 
+    elif num_leads == 3:
+        #channel3 = (ch1, ch2, ch8)
+        train_data_chl = train_data[train_data['filepath'].str.contains('chl_1|chl_2|chl_8')] 
+    else:
+        #channel2 = (ch1, ch11)
+        train_data_chl = train_data[train_data['filepath'].str.contains('chl_1|chl_11')] 
+        
+    image_dir = "Database_Image"
+    IMG_SIZE = 224
+    idg = ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, zoom_range=0.3,fill_mode='nearest',horizontal_flip = True,rescale=1./255)
+    
+    filepath="model/weights_best.hdf5"
+    classifier.load_weights(filepath)
+	
+    train_data_generator = idg.flow_from_dataframe(train_data_chl, directory = image_dir, x_col = "filepath", y_col = "label", target_size=(IMG_SIZE , IMG_SIZE ),
+							   class_mode = "categorical", shuffle = True)
+    
+    imputer=SimpleImputer().fit(train_data_generator)
+    train_data_generator = imputer.transform(train_data_generator)
 
-    # Impute missing data.
-    features = data.reshape(1, -1)
-    features = imputer.transform(features)
 
     # Predict labels and probabilities.
-    labels = classifier.predict(features)
+    labels = classifier.predict(train_data_generator)
     labels = np.asarray(labels, dtype=np.int)[0]
 
-    probabilities = classifier.predict_proba(features)
+    probabilities = classifier.predict_proba(train_data_generator)
     probabilities = np.asarray(probabilities, dtype=np.float32)[:, 0, 1]
 
     return classes, labels, probabilities
@@ -266,11 +271,10 @@ def get_features(header, recording, leads):
 
     return age, sex, rms
 
-def get_signal_spectrum(header, recording, leads,data_directory, label, k):
-    
+def get_signal_spectrum(header, recording, leads, label, k):  
     # print('Storing classes...')
-    mapped_scored_labels = np.array(list(csv.reader(open('/content/drive/MyDrive/python-classifier-2021/dx_mapping_scored.csv'))))
-    data_directory_image = '/content/drive/MyDrive/python-classifier-2021/Database_Image/'
+    mapped_scored_labels = np.array(list(csv.reader(open('dx_mapping_scored.csv'))))
+    data_directory_image = 'Database_Image/'
     if not os.path.isdir(data_directory_image):
         os.mkdir(data_directory_image)
 
@@ -289,28 +293,27 @@ def get_signal_spectrum(header, recording, leads,data_directory, label, k):
     for i in range(num_leads):
         recording[i, :] = amplitudes[i] * recording[i, :] - baselines[i]
     
-    #img = np.zeros((num_leads,2), dtype=np.float32)
     index_value = np.where(mapped_scored_labels == label)[0]
     for i in range(num_leads):
         if index_value: 
             index_lbl = ''.join(filter(str.isalpha,str(mapped_scored_labels[index_value,2])))
             label_img_path = (data_directory_image +"chl_"+str(i+1)+"/"+ ''.join(filter(str.isalpha,str(mapped_scored_labels[index_value,2])))+"/")
             if not os.path.isdir(label_img_path):
-                #os.mkdir(label_img_path)
                 os.makedirs(label_img_path, exist_ok = True)
         else:
             index_lbl = str('NR')
             label_img_path = data_directory_image+"chl_"+str(i+1)+"/"+ "NR/"
             if not os.path.isdir(label_img_path):
-                #os.mkdir(label_img_path)
                 os.makedirs(label_img_path, exist_ok = True)
+                
         x = recording[i, :]
         sample_rate = get_frequency(header)
         samples =  x
         Time = np.linspace(0, len(samples) / sample_rate, num=len(samples))
         filename = str(k+1) +'_'+str(i+1)+'.png'
         plotpath1 = str(label_img_path + filename)
-        with open('/content/drive/MyDrive/python-classifier-2021/myfile.csv', 'a') as f: 
+        
+        with open('myfile.csv', 'a') as f: 
           writer = csv.writer(f)
           writer.writerow([str(plotpath1), index_lbl])
 
@@ -409,9 +412,7 @@ def build_model(num_classes,IMG_SIZE):
     x = layers.Dropout(top_dropout_rate, name="top_dropout")(x)
     outputs = layers.Dense(NUM_CLASSES, activation="softmax", name="pred")(x)
 
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay( initial_learning_rate=1e-2,
-    decay_steps=100,
-    decay_rate=0.01)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-2, decay_steps=100, decay_rate=0.01)
 
     # Compile
     model = tf.keras.Model(inputs, outputs, name="EfficientNet")
@@ -422,71 +423,33 @@ def build_model(num_classes,IMG_SIZE):
 def our_clsf_model(data_directory,train_data_sp,leads):
     train_data = train_data_sp
     leads = leads
-    Y = train_data[['label']] 
-    skf = StratifiedKFold(n_splits = 2, random_state = 7, shuffle = True) 
-    idg = ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, zoom_range=0.3,fill_mode='nearest',horizontal_flip = True,rescale=1./255)
-
-    data_directory_image = data_directory
-    b = "Database"
-    image_dir = data_directory_image.replace(b,"Database_Image")
+    image_dir = "Database_Image"
     
     NUM_CLASSES=len(train_data['label'].unique().tolist())
     classes1 = train_data['label'].unique().tolist()
     IMG_SIZE = 224
-
-    VALIDATION_ACCURACY = []
-    VALIDATION_LOSS = []
-
-    fold_var = 1
     
-    filepath="/content/drive/MyDrive/python-classifier-2021/Model/weights_best.hdf5"
-
-    for train_index, val_index in skf.split(np.zeros(len(Y)),Y):
-    		training_data = train_data.iloc[train_index]
-    		validation_data = train_data.iloc[val_index]
-    	
-    		train_data_generator = idg.flow_from_dataframe(training_data, directory = image_dir, x_col = "filepath", y_col = "label", target_size=(IMG_SIZE , IMG_SIZE ),
-    							   class_mode = "categorical", shuffle = True)
-    		valid_data_generator  = idg.flow_from_dataframe(validation_data, directory = image_dir,	x_col = "filepath", y_col = "label", target_size=(IMG_SIZE , IMG_SIZE ),
-    							class_mode = "categorical", shuffle = True)
+    idg = ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, zoom_range=0.3,fill_mode='nearest',horizontal_flip = True,rescale=1./255)
+    
+    filepath="model/weights_best.hdf5"
+	
+    train_data_generator = idg.flow_from_dataframe(train_data, directory = image_dir, x_col = "filepath", y_col = "label", target_size=(IMG_SIZE , IMG_SIZE ),
+							   class_mode = "categorical", shuffle = True)
+    
+    imputer=SimpleImputer().fit(train_data_generator)
+    train_data_generator = imputer.transform(train_data_generator)
+    
+    classifier = build_model(num_classes=NUM_CLASSES,IMG_SIZE = IMG_SIZE )
  
-        #imputer=SimpleImputer().fit(train_data_generator)
-    		classifier = build_model(num_classes=NUM_CLASSES,IMG_SIZE = IMG_SIZE )
+    # CREATE CALLBACKS
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1,save_best_only=True, mode='max')
+    callbacks_list = [checkpoint]
+  
+	#model.summary()
+    hist = classifier.fit(train_data_generator, epochs=5, callbacks=callbacks_list, verbose=1)
+    # LOAD BEST MODEL to evaluate the performance of the model
+    classifier.load_weights(filepath)
     
-      
-            # CREATE CALLBACKS
-    		checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1,save_best_only=True, mode='max')
-    		callbacks_list = [checkpoint]
-
-    		#model.summary()
-        
-    		hist = classifier.fit(train_data_generator, epochs=5, callbacks=callbacks_list, validation_data=valid_data_generator, verbose=1)
-            
-      		# LOAD BEST MODEL to evaluate the performance of the model
-    		classifier.load_weights(filepath)
-    	
-    		results = classifier.evaluate(valid_data_generator)
-    		results = dict(zip(classifier.metrics_names,results))
-    	
-    		VALIDATION_ACCURACY.append(results['accuracy'])
-    		VALIDATION_LOSS.append(results['loss'])
-      
-    		valid_data_generator.reset()
-    		y_pred = classifier.predict_generator(valid_data_generator,verbose=1)
-    		y_pred_bool = np.argmax(y_pred, axis=1)
-      
-    		print(confusion_matrix(valid_data_generator.classes,y_pred_bool))
-    		print (y_pred_bool)
-
-    		labels = (valid_data_generator.class_indices)
-    		labels = dict((v,k) for k,v in labels.items())
-    		predictions = [labels[k] for k in y_pred_bool]
-
-    		filenames=valid_data_generator.filenames
-    		results=pd.DataFrame({"Filename":filenames,"Predictions":predictions})
-    		results.to_csv("results.csv",index=False)   
-
-    		tf.keras.backend.clear_session()
-    	
-    		fold_var += 1
-    return classes1, leads, classifier 
+    tf.keras.backend.clear_session()
+    
+    return classes1, leads, imputer, classifier 
