@@ -5,7 +5,5 @@ joblib==0.17.0
 tensorflow
 pandas
 opencv-python
-torch
-torchvision
 keras
 
