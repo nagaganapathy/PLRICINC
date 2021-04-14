@@ -12,3 +12,4 @@ WORKDIR /physionet
 
 ## Include the following line if you have a requirements.txt file.
 RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y python3-opencv
