@@ -343,7 +343,7 @@ def stft(sig, frameSize, overlapFac=0.5, window=np.hanning):
     return np.fft.rfft(frames)    
 
 """ scale frequency axis logarithmically """    
-def logscale_spec(spec, sr=44100, factor=20.):
+def logscale_spec(spec, sr, factor=20.):
     timebins, freqbins = np.shape(spec)
 
     scale = np.linspace(0, 1, freqbins) ** factor
