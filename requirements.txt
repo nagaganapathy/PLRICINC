@@ -3,6 +3,7 @@ scipy==1.5.4
 scikit-learn==0.23.2
 joblib==0.17.0
 tensorflow
+tensorflow-GPU
 pandas
 opencv-python
 keras
